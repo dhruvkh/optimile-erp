@@ -11,4 +11,9 @@ export default defineConfig({
       '@modules': path.resolve(__dirname, './src/modules'),
     },
   },
+  server: {
+    host: true, // allow external access
+    port: 4000,
+    allowedHosts: ['fleet.optimile.co'],
+  },
 });
