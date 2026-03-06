@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import { TripDataFull, TRIP_STATUS_FLOW, TripCheckpoint } from './types';
-import { 
-  CheckCircle, Clock, MapPin, AlertCircle, Camera, FileText, 
-  ChevronDown, ChevronUp, User, MoreVertical 
+import {
+  CheckCircle, Clock, MapPin, AlertCircle, Camera, FileText,
+  ChevronDown, ChevronUp, User, MoreVertical, CornerDownRight
 } from 'lucide-react';
 import { Card } from '../../ui/Card';
 
@@ -23,23 +23,90 @@ export const TripTimeline: React.FC<TripTimelineProps> = ({ data }) => {
   // Render a single timeline item
   const renderCheckpoint = (checkpoint: TripCheckpoint, index: number, isLast: boolean) => {
     const statusDef = TRIP_STATUS_FLOW[checkpoint.status];
-    const isCompleted = statusDef.code <= currentStatusIndex;
-    const isCurrent = statusDef.code === currentStatusIndex;
+    const isDiversion = checkpoint.status === 'DELIVERY_DIVERTED';
+    const isCompleted = isDiversion || statusDef.code <= currentStatusIndex;
+    const isCurrent = !isDiversion && statusDef.code === currentStatusIndex;
     const isExpanded = expandedId === checkpoint.id;
+
+    if (isDiversion) {
+      const d = checkpoint.data || {};
+      return (
+        <div key={checkpoint.id} className="relative pl-8 sm:pl-10 py-1 group">
+          {!isLast && <div className="absolute left-[15px] sm:left-[19px] top-8 bottom-0 w-0.5 bg-amber-200" />}
+          <div className="absolute left-0 sm:left-1 top-2 w-8 h-8 rounded-full border-2 border-amber-400 bg-amber-50 flex items-center justify-center z-10">
+            <CornerDownRight className="w-4 h-4 text-amber-500" />
+          </div>
+          <div
+            className="rounded-lg border-l-4 border-l-amber-400 border border-amber-200 bg-amber-50/40 transition-all duration-200 cursor-pointer hover:border-amber-300"
+            onClick={() => toggleExpand(checkpoint.id)}
+          >
+            <div className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-bold text-amber-700 flex items-center gap-1.5">
+                    <CornerDownRight className="h-3.5 w-3.5" /> Delivery Diverted
+                  </h4>
+                  <div className="flex items-center text-xs sm:hidden text-gray-500">
+                    {new Date(checkpoint.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+                <div className="text-xs text-amber-600 font-medium mt-0.5 flex items-center gap-1">
+                  <MapPin className="h-3 w-3" /> {d.newAddress || checkpoint.locationName}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {new Date(checkpoint.timestamp).toLocaleDateString()} · {new Date(checkpoint.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 mt-2 sm:mt-0">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">
+                  +{d.additionalKm} km · ₹{(d.totalCharge as number)?.toLocaleString('en-IN')}
+                </span>
+                {isExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+              </div>
+            </div>
+
+            {isExpanded && (
+              <div className="px-4 pb-4 pt-0 border-t border-amber-200 mt-2 animate-in slide-in-from-top-1">
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                  <div>
+                    <p className="text-xs font-semibold text-amber-600 uppercase mb-1.5">Diversion Details</p>
+                    <div className="space-y-1.5">
+                      <div><span className="text-gray-500 text-xs">New Address: </span><span className="text-xs font-medium text-amber-700">{d.newAddress}</span></div>
+                      <div><span className="text-gray-500 text-xs">Reason: </span><span className="text-xs font-medium text-gray-800">{d.reason}</span></div>
+                      <div><span className="text-gray-500 text-xs">Requested By: </span><span className="text-xs font-medium capitalize text-gray-800">{d.requestedBy}</span></div>
+                      {d.contactName && <div><span className="text-gray-500 text-xs">Contact: </span><span className="text-xs font-medium text-gray-800">{d.contactName} {d.contactPhone && `· ${d.contactPhone}`}</span></div>}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-amber-600 uppercase mb-1.5">Charges</p>
+                    <div className="space-y-1.5">
+                      <div><span className="text-gray-500 text-xs">Extra km: </span><span className="text-xs font-medium text-gray-800">{d.additionalKm} km</span></div>
+                      <div><span className="text-gray-500 text-xs">Total Charge: </span><span className="text-xs font-bold text-amber-700">₹{(d.totalCharge as number)?.toLocaleString('en-IN')}</span></div>
+                      <div><span className="text-gray-500 text-xs">Charged To: </span><span className="text-xs font-medium capitalize text-gray-800">{d.chargedTo}</span></div>
+                      {d.billingNote && <div><span className="text-gray-500 text-xs">Billing Note: </span><span className="text-xs text-gray-700">{d.billingNote}</span></div>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div key={checkpoint.id} className="relative pl-8 sm:pl-10 py-1 group">
         {/* Connector Line */}
         {!isLast && (
-          <div 
-            className={`absolute left-[15px] sm:left-[19px] top-8 bottom-0 w-0.5 ${isCompleted ? 'bg-indigo-200' : 'bg-gray-200'}`} 
+          <div
+            className={`absolute left-[15px] sm:left-[19px] top-8 bottom-0 w-0.5 ${isCompleted ? 'bg-indigo-200' : 'bg-gray-200'}`}
           />
         )}
 
         {/* Status Dot */}
-        <div 
+        <div
           className={`absolute left-0 sm:left-1 top-2 w-8 h-8 rounded-full border-2 flex items-center justify-center z-10 transition-colors
-            ${isCurrent ? 'bg-white border-primary shadow-md scale-110' : 
+            ${isCurrent ? 'bg-white border-primary shadow-md scale-110' :
               isCompleted ? 'bg-indigo-50 border-indigo-200' : 'bg-gray-50 border-gray-200'}
           `}
         >
@@ -51,9 +118,9 @@ export const TripTimeline: React.FC<TripTimelineProps> = ({ data }) => {
         </div>
 
         {/* Card Content */}
-        <div 
-          className={`rounded-lg border transition-all duration-200 cursor-pointer 
-            ${isCurrent ? 'border-primary ring-1 ring-primary/30 bg-blue-50/20' : 
+        <div
+          className={`rounded-lg border transition-all duration-200 cursor-pointer
+            ${isCurrent ? 'border-primary ring-1 ring-primary/30 bg-blue-50/20' :
               'border-gray-200 bg-white hover:border-gray-300'}
           `}
           onClick={() => toggleExpand(checkpoint.id)}
@@ -97,7 +164,7 @@ export const TripTimeline: React.FC<TripTimelineProps> = ({ data }) => {
           {isExpanded && (
              <div className="px-4 pb-4 pt-0 border-t border-gray-100 mt-2 animate-in slide-in-from-top-1">
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                   
+
                    {/* Capture Info */}
                    <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Captured By</p>

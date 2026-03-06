@@ -346,6 +346,22 @@ class ExceptionManager {
         return true;
     }
 
+    addCostImpact(exceptionId: string, additionalCost: number, by: string, notes: string): boolean {
+        const exc = this.exceptions.find(e => e.id === exceptionId);
+        if (!exc) return false;
+
+        exc.costImpact += additionalCost;
+        exc.timeline.push({
+            timestamp: Date.now(),
+            action: 'Cost Impact Recorded',
+            by,
+            notes,
+        });
+
+        this.notify();
+        return true;
+    }
+
     // ── QUERIES ────────────────────────────────────────────────
 
     getAll(): TripException[] {

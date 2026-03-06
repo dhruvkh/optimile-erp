@@ -2,27 +2,34 @@ import React, { useState } from 'react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Search, Plus, Filter, LayoutGrid, List, Truck } from 'lucide-react';
+import { Search, Plus, Filter, Truck } from 'lucide-react';
 import { NewBookingWizard } from '../components/bookings/NewBookingWizard';
 import { PipelineBoard } from '../components/bookings/pipeline/PipelineBoard';
 import { VehicleAssignment } from '../components/bookings/assignment/VehicleAssignment';
-import { RateManagement } from '../components/bookings/rates/RateManagement';
-import { DocumentationTab } from '../components/bookings/docs/DocumentationTab';
-import { CommunicationTab } from '../components/bookings/communication/CommunicationTab';
 import { BookingProvider } from '../context/BookingContext';
 import { BookingDetailsModal } from '../components/bookings/BookingDetailsModal';
-// removed useToast
+import { useOperationalData } from '../../../shared/context/OperationalDataContext';
 
-// Mock Data for List View
-const LIST_DATA = [
-    { id: 'BK-2024-001', type: 'FTL', customer: 'Acme Corp Ltd', route: 'Mumbai → Delhi', status: 'Completed', driver: 'John Doe', amount: '₹ 45,000' },
-    { id: 'BK-2024-003', type: 'FTL', customer: 'Global Foods', route: 'Pune → Hyderabad', status: 'Pending', driver: '-', amount: '₹ 38,000' },
-    { id: 'BK-2024-005', type: 'FTL', customer: 'BuildRight', route: 'Chennai → Kolkata', status: 'In Transit', driver: 'Mike Ross', amount: '₹ 62,000' },
-    { id: 'BK-2024-007', type: 'FTL', customer: 'MegaCorp', route: 'Delhi → Chandigarh', status: 'Vehicle Assigned', driver: 'Rajesh K', amount: '₹ 28,500' },
-    { id: 'BK-2024-009', type: 'Spot', customer: 'QuickShip', route: 'Mumbai → Ahmedabad', status: 'In Transit', driver: 'Anil V', amount: '₹ 18,000' },
-];
+const STATUS_LABEL: Record<string, string> = {
+    booked: 'Booked',
+    in_transit: 'In Transit',
+    delivered: 'Delivered',
+    pod_received: 'POD Received',
+    invoiced: 'Invoiced',
+    cancelled: 'Cancelled',
+};
+
+const STATUS_COLOR: Record<string, string> = {
+    booked: 'bg-blue-100 text-blue-800',
+    in_transit: 'bg-purple-100 text-purple-800',
+    delivered: 'bg-green-100 text-green-800',
+    pod_received: 'bg-teal-100 text-teal-800',
+    invoiced: 'bg-indigo-100 text-indigo-800',
+    cancelled: 'bg-red-100 text-red-800',
+};
 
 export const Bookings: React.FC = () => {
+    const { completedTrips } = useOperationalData();
     const [activeTab, setActiveTab] = useState('pipeline');
     const [selectedBooking, setSelectedBooking] = useState<any>(null);
 
@@ -33,7 +40,15 @@ export const Bookings: React.FC = () => {
         { id: 'assignment', label: 'Vehicle Assignment' },
     ];
 
-    const filteredListData = LIST_DATA;
+    const filteredListData = completedTrips.map(trip => ({
+        id: trip.id,
+        type: trip.bookingMode === 'PARTIAL' || trip.bookingMode === 'LTL' ? 'LTL' : 'FTL',
+        customer: trip.clientName,
+        route: `${trip.origin} → ${trip.destination}`,
+        status: trip.status,
+        driver: trip.driverName || '-',
+        amount: `₹ ${trip.revenueAmount.toLocaleString()}`,
+    }));
 
     const handleRowClick = (booking: any) => {
         setSelectedBooking(booking);
@@ -109,11 +124,8 @@ export const Bookings: React.FC = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${item.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                                                    item.status === 'In Transit' ? 'bg-blue-100 text-blue-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                    }`}>
-                                                    {item.status}
+                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${STATUS_COLOR[item.status] ?? 'bg-gray-100 text-gray-800'}`}>
+                                                    {STATUS_LABEL[item.status] ?? item.status}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

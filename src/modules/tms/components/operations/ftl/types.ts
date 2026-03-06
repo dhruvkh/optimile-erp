@@ -1,5 +1,5 @@
 
-import { LucideIcon, ClipboardList, Truck, MapPin, Package, CheckCircle, Navigation, Anchor, ArrowRight, Upload, FileCheck, Lock, CheckSquare } from 'lucide-react';
+import { LucideIcon, ClipboardList, Truck, MapPin, Package, CheckCircle, Navigation, Anchor, ArrowRight, Upload, FileCheck, Lock, CheckSquare, CornerDownRight } from 'lucide-react';
 
 export type TripStatusCode =
   | 'INDENT_RECEIVED'
@@ -9,6 +9,7 @@ export type TripStatusCode =
   | 'LOADING_COMPLETED'
   | 'DISPATCHED'
   | 'IN_TRANSIT'
+  | 'DELIVERY_DIVERTED'
   | 'REACHED_DESTINATION'
   | 'UNLOADING_STARTED'
   | 'UNLOADING_COMPLETED'
@@ -55,7 +56,11 @@ export const TRIP_STATUS_FLOW: Record<TripStatusCode, TripStatusDefinition> = {
   },
   IN_TRANSIT: {
     code: 7, key: 'IN_TRANSIT', name: "In Transit", color: "bg-blue-400", icon: ArrowRight,
-    allowedNext: ["REACHED_DESTINATION"], requiredFields: ["gpsLocation"], description: "Vehicle en route to destination"
+    allowedNext: ["REACHED_DESTINATION", "DELIVERY_DIVERTED"], requiredFields: ["gpsLocation"], description: "Vehicle en route to destination"
+  },
+  DELIVERY_DIVERTED: {
+    code: 7.5 as any, key: 'DELIVERY_DIVERTED', name: "Delivery Diverted", color: "bg-amber-500", icon: CornerDownRight,
+    allowedNext: ["REACHED_DESTINATION"], requiredFields: [], description: "Delivery redirected to a new address"
   },
   REACHED_DESTINATION: {
     code: 8, key: 'REACHED_DESTINATION', name: "Reached Destination", color: "bg-purple-500", icon: Anchor,

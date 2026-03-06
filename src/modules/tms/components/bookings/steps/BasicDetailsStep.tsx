@@ -21,8 +21,8 @@ export const BasicDetailsStep: React.FC = () => {
       {/* Booking Type Selection */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-3">Booking Type</label>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {['FTL', 'PTL', 'Spot'].map((type) => (
+        <div className="grid grid-cols-2 gap-4">
+          {['FTL', 'Spot'].map((type) => (
             <div
               key={type}
               onClick={() => updateData({ bookingType: type as any })}
@@ -72,6 +72,9 @@ export const BasicDetailsStep: React.FC = () => {
             onChange={(e) => updateData({ customerReference: e.target.value })}
             icon={<Info className="h-4 w-4 text-gray-400" />}
           />
+          <p className="text-xs text-gray-500 mt-1">
+            Your client's internal PO or order reference — used to cross-reference this booking with their system.
+          </p>
         </div>
 
         {/* Priority */}

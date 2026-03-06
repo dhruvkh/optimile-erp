@@ -4,16 +4,13 @@ import { useBooking } from '../../../context/BookingContext';
 import { Input } from '../../ui/Input';
 import { IndianRupee, Truck, ShieldCheck, AlertCircle } from 'lucide-react';
 import { Card } from '../../ui/Card';
-import { LTLRateCalculator } from '../ltl/LTLRateCalculator';
 import { LoadPlanner } from '../ftl/LoadPlanner';
 import { VehicleMatcher } from '../ftl/VehicleMatcher';
-import { ConsolidatedAssignment } from '../ltl/ConsolidatedAssignment';
 import { amsContractStore } from '../../../../../shared/services/amsContractStore';
 
 export const RateVehicleStep: React.FC = () => {
   const { data, updateData } = useBooking();
 
-  const isLTL = data.bookingType === 'PTL';
   const isFTL = data.bookingType === 'FTL';
 
   // Derive origin/destination city names (strip state suffix if present)
@@ -33,36 +30,9 @@ export const RateVehicleStep: React.FC = () => {
     // Reset base rate when switching away from Contract if it was auto-filled
     if (data.rateType === 'Spot' && data.baseRate === 0) {
       const simulatedRate = (data.weight * 2000) + 15000;
-      if (!isLTL) updateData({ baseRate: simulatedRate });
+      updateData({ baseRate: simulatedRate });
     }
-  }, [data.rateType, contractRate?.id, data.weight, isLTL]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (isLTL) {
-      if (data.isConsolidated) {
-          return (
-              <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                  <ConsolidatedAssignment />
-              </div>
-          );
-      }
-      return (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
-                  <div className="flex">
-                      <div className="flex-shrink-0">
-                          <InfoIcon className="h-5 w-5 text-blue-400" />
-                      </div>
-                      <div className="ml-3">
-                          <p className="text-sm text-blue-700">
-                              LTL Rating Mode Active. Pricing is based on Freight Class ({data.ltlMetrics.freightClass}), Density, and Accessorials.
-                          </p>
-                      </div>
-                  </div>
-              </div>
-              <LTLRateCalculator />
-          </div>
-      );
-  }
+  }, [data.rateType, contractRate?.id, data.weight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // FTL / Standard Rate Logic
   const totalRate = data.baseRate + data.loadingCharges + data.unloadingCharges + data.tollCharges + data.otherCharges;

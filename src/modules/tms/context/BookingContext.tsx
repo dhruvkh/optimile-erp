@@ -84,7 +84,7 @@ export interface PTLDetails {
 
 export interface BookingData {
   // Step 1: Basic
-  bookingType: 'FTL' | 'PTL' | 'Spot';
+  bookingType: 'FTL' | 'Spot';
   clientId: string;
   clientName: string;
   clientTier: 'Premium' | 'Standard' | 'Basic';

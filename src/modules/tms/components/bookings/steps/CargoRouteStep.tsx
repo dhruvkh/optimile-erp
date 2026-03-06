@@ -1,17 +1,14 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useBooking } from '../../../context/BookingContext';
 import { Input } from '../../ui/Input';
-import { MapPin, Phone, Package, Box, Navigation, Users, Clock, AlertTriangle, Thermometer } from 'lucide-react';
-import { LTLHandlingUnits } from '../ltl/LTLHandlingUnits';
+import { MapPin, Phone, Package, Box, Navigation } from 'lucide-react';
 import { FTLRequestForm } from '../ftl/FTLRequestForm';
 import { RouteOptimizer } from '../ftl/RouteOptimizer';
 
 export const CargoRouteStep: React.FC = () => {
-  const { data, updateData, updatePTLData } = useBooking();
+  const { data, updateData } = useBooking();
 
-  const isPTL = data.bookingType === 'PTL';
-  const isLTL = isPTL;
   const isFTL = data.bookingType === 'FTL';
 
   const handleSpecialReqChange = (req: string) => {
@@ -21,35 +18,6 @@ export const CargoRouteStep: React.FC = () => {
       updateData({ specialReqs: [...data.specialReqs, req] });
     }
   };
-
-  // Auto-calculate PTL percent
-  useEffect(() => {
-    if (isPTL && data.weight > 0) {
-        // Assume 9000kg capacity for 32ft for demo
-        const percent = Math.min(100, Math.round((data.weight / 9000) * 100));
-        updatePTLData({ 
-            requestedCapacity: { ...data.ptl.requestedCapacity, percentOfTruck: percent } 
-        });
-    }
-  }, [data.weight, isPTL]);
-
-  // Set default flexible timing if empty
-  useEffect(() => {
-    if (isPTL && !data.ptl.flexibleTiming.pickupWindow.earliest) {
-        updatePTLData({
-            flexibleTiming: {
-                pickupWindow: {
-                    earliest: `${data.pickupDate}T08:00`,
-                    latest: `${data.pickupDate}T12:00`
-                },
-                deliveryWindow: {
-                    earliest: `${data.deliveryDate || data.pickupDate}T14:00`,
-                    latest: `${data.deliveryDate || data.pickupDate}T18:00`
-                }
-            }
-        });
-    }
-  }, [isPTL, data.pickupDate, data.deliveryDate]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -175,195 +143,12 @@ export const CargoRouteStep: React.FC = () => {
             Cargo Information
         </h4>
 
-        {isLTL ? (
-            // LTL Specific Cargo Form
-            <div className="space-y-6">
-               <LTLHandlingUnits />
-               <div className="space-y-4 mt-6 border-t border-gray-200 pt-4">
-                  <Input 
-                      label="Cargo Description"
-                      value={data.description}
-                      onChange={(e) => updateData({ description: e.target.value })}
-                      placeholder="e.g. Auto Parts, Palletized"
-                  />
-                  <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Special Requirements</label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                          {['Fragile', 'Temp. Control', 'Hazardous', 'Oversized', 'High Value', 'Stackable'].map((req) => (
-                              <label key={req} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50 cursor-pointer">
-                                  <input 
-                                      type="checkbox" 
-                                      className="rounded text-primary focus:ring-primary h-4 w-4 border-gray-300"
-                                      checked={data.specialReqs.includes(req)}
-                                      onChange={() => handleSpecialReqChange(req)}
-                                  />
-                                  <span className="text-sm text-gray-700">{req}</span>
-                              </label>
-                          ))}
-                      </div>
-                  </div>
-               </div>
-            </div>
-        ) : isFTL ? (
-            // Enhanced FTL Form
+        {isFTL ? (
+            // FTL Cargo Form
             <>
                 <FTLRequestForm />
                 <RouteOptimizer />
             </>
-        ) : isPTL ? (
-            // PTL Specific Form
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Input 
-                        label="Weight (Kg)" 
-                        type="number" 
-                        value={data.weight} 
-                        onChange={(e) => updateData({ weight: Number(e.target.value) })} 
-                    />
-                    <Input 
-                        label="Volume (Cubic Meters)" 
-                        type="number" 
-                        value={data.volume} 
-                        onChange={(e) => updateData({ volume: Number(e.target.value) })} 
-                    />
-                    <Input 
-                        label="Handling Units (Pallets)" 
-                        type="number" 
-                        value={data.ptl.requestedCapacity.handlingUnits} 
-                        onChange={(e) => updatePTLData({ requestedCapacity: { ...data.ptl.requestedCapacity, handlingUnits: Number(e.target.value) } })} 
-                    />
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm font-bold text-blue-900">Estimated Truck Capacity Required</span>
-                        <span className="text-xl font-bold text-blue-700">{data.ptl.requestedCapacity.percentOfTruck || 0}%</span>
-                    </div>
-                    <div className="w-full bg-blue-200 rounded-full h-2.5 mt-2">
-                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${Math.min(data.ptl.requestedCapacity.percentOfTruck || 0, 100)}%` }}></div>
-                    </div>
-                    <p className="text-xs text-blue-600 mt-1">Based on 32 Ton / 90 cu.m capacity</p>
-                </div>
-
-                {/* Sharing Preferences */}
-                <div className="border-t border-gray-200 pt-6">
-                    <h4 className="text-md font-bold text-gray-900 mb-3 flex items-center">
-                        <Users className="h-4 w-4 mr-2 text-primary" /> Sharing Preferences
-                    </h4>
-                    
-                    <div className="space-y-3">
-                        <label className="flex items-start space-x-3 p-3 border rounded-lg bg-green-50/50 border-green-200 cursor-pointer">
-                            <input 
-                                type="checkbox" 
-                                checked={data.ptl.sharingPreferences.allowCoLoading}
-                                onChange={(e) => updatePTLData({ sharingPreferences: { ...data.ptl.sharingPreferences, allowCoLoading: e.target.checked } })}
-                                className="mt-1 rounded text-green-600 focus:ring-green-500 h-4 w-4"
-                            />
-                            <div>
-                                <span className="block text-sm font-bold text-gray-900">I'm okay sharing the truck with other customers</span>
-                                <span className="block text-xs text-green-700">This significantly reduces shipping costs (40-60%)</span>
-                            </div>
-                        </label>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="border rounded-lg p-3 space-y-2">
-                                <label className="flex items-center space-x-2">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={data.ptl.sharingPreferences.noCompetitors}
-                                        onChange={(e) => updatePTLData({ sharingPreferences: { ...data.ptl.sharingPreferences, noCompetitors: e.target.checked } })}
-                                        className="rounded text-primary focus:ring-primary"
-                                    />
-                                    <span className="text-sm font-medium">No Competitor Products</span>
-                                </label>
-                                {data.ptl.sharingPreferences.noCompetitors && (
-                                    <textarea 
-                                        placeholder="Enter competitor names (e.g. CompanyX, CompanyY)"
-                                        className="w-full text-xs border-gray-300 rounded p-2 h-16"
-                                        value={data.ptl.sharingPreferences.competitors.join(', ')}
-                                        onChange={(e) => updatePTLData({ sharingPreferences: { ...data.ptl.sharingPreferences, competitors: e.target.value.split(',').map(s=>s.trim()) } })}
-                                    />
-                                )}
-                            </div>
-
-                            <div className="border rounded-lg p-3 space-y-3">
-                                <label className="flex items-center space-x-2">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={data.ptl.sharingPreferences.noHazmat}
-                                        onChange={(e) => updatePTLData({ sharingPreferences: { ...data.ptl.sharingPreferences, noHazmat: e.target.checked } })}
-                                        className="rounded text-primary focus:ring-primary"
-                                    />
-                                    <span className="text-sm font-medium">No Hazmat Co-loading</span>
-                                </label>
-                                <label className="flex items-center space-x-2">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={data.ptl.sharingPreferences.temperatureControlOnly}
-                                        onChange={(e) => updatePTLData({ sharingPreferences: { ...data.ptl.sharingPreferences, temperatureControlOnly: e.target.checked } })}
-                                        className="rounded text-primary focus:ring-primary"
-                                    />
-                                    <span className="text-sm font-medium">Temperature Control Only</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Flexible Timing */}
-                <div className="border-t border-gray-200 pt-6">
-                    <h4 className="text-md font-bold text-gray-900 mb-3 flex items-center">
-                        <Clock className="h-4 w-4 mr-2 text-primary" /> Flexible Timing
-                    </h4>
-                    <p className="text-xs text-gray-500 mb-4">Wider pickup/delivery windows increase consolidation chances.</p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-3 bg-gray-50 p-3 rounded-lg">
-                            <span className="text-xs font-bold uppercase text-gray-500">Pickup Window</span>
-                            <div>
-                                <label className="block text-xs mb-1">Earliest</label>
-                                <input 
-                                    type="datetime-local" 
-                                    className="w-full text-xs border-gray-300 rounded"
-                                    value={data.ptl.flexibleTiming.pickupWindow.earliest}
-                                    onChange={(e) => updatePTLData({ flexibleTiming: { ...data.ptl.flexibleTiming, pickupWindow: { ...data.ptl.flexibleTiming.pickupWindow, earliest: e.target.value } } })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs mb-1">Latest</label>
-                                <input 
-                                    type="datetime-local" 
-                                    className="w-full text-xs border-gray-300 rounded"
-                                    value={data.ptl.flexibleTiming.pickupWindow.latest}
-                                    onChange={(e) => updatePTLData({ flexibleTiming: { ...data.ptl.flexibleTiming, pickupWindow: { ...data.ptl.flexibleTiming.pickupWindow, latest: e.target.value } } })}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="space-y-3 bg-gray-50 p-3 rounded-lg">
-                            <span className="text-xs font-bold uppercase text-gray-500">Delivery Window</span>
-                            <div>
-                                <label className="block text-xs mb-1">Earliest</label>
-                                <input 
-                                    type="datetime-local" 
-                                    className="w-full text-xs border-gray-300 rounded"
-                                    value={data.ptl.flexibleTiming.deliveryWindow.earliest}
-                                    onChange={(e) => updatePTLData({ flexibleTiming: { ...data.ptl.flexibleTiming, deliveryWindow: { ...data.ptl.flexibleTiming.deliveryWindow, earliest: e.target.value } } })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs mb-1">Latest</label>
-                                <input 
-                                    type="datetime-local" 
-                                    className="w-full text-xs border-gray-300 rounded"
-                                    value={data.ptl.flexibleTiming.deliveryWindow.latest}
-                                    onChange={(e) => updatePTLData({ flexibleTiming: { ...data.ptl.flexibleTiming, deliveryWindow: { ...data.ptl.flexibleTiming.deliveryWindow, latest: e.target.value } } })}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         ) : (
             // Spot/Standard Cargo Form
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

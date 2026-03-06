@@ -36,7 +36,7 @@ const InvoiceList: React.FC = () => {
 
   // On mount: import any PTL dockets that were delivered in TMS as draft invoices
   useEffect(() => {
-    const pending = ptlStore.popFinanceItems();
+    const pending = ptlStore.popFinanceRevenue();
     if (pending.length === 0) return;
     pending.forEach(item => {
       const today = new Date().toISOString().split('T')[0];
@@ -45,25 +45,25 @@ const InvoiceList: React.FC = () => {
         id: `ptl-inv-${item.docketId}`,
         customerId: item.clientName.toLowerCase().replace(/\s+/g, '-'),
         customerName: item.clientName,
-        invoiceNumber: item.invoiceNumber || `PTL-${item.docketNumber}`,
+        invoiceNumber: `PTL-${item.docketNumber}`,
         status: 'draft' as InvoiceStatus,
         date: today,
         dueDate: due,
-        amount: item.totalCharges,
+        amount: item.totalRevenue,
         lineItems: [
           {
             id: `li-${item.docketId}`,
             description: `PTL Freight — ${item.docketNumber} (${item.pickupCity} → ${item.deliveryCity})`,
             quantity: 1,
-            unitPrice: item.totalCharges,
-            total: item.totalCharges,
-            lrNumber: item.docketNumber,
+            unitPrice: item.totalRevenue,
+            total: item.totalRevenue,
+            lrNumber: item.docketNumber || item.lrNumber,
             placeOfOrigin: item.pickupCity,
             placeOfDestination: item.deliveryCity,
             deliveryDate: item.deliveryDate,
           },
         ],
-        notes: `[PTL] Auto-imported from TMS. Docket: ${item.docketNumber}. ${item.pieces} pcs • ${item.chargeableWeight} kg. Received by: ${item.receiverName || 'N/A'}.`,
+        notes: `[PTL] Auto-imported from TMS. Docket: ${item.docketNumber}. ${item.pieces} pcs • ${item.chargeableWeight} kg.`,
         otherReferences: `PTL/${item.docketNumber}`,
       };
       dispatch({ type: 'ADD_INVOICE', payload: invoice });

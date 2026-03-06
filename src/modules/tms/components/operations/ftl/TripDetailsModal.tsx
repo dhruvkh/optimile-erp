@@ -4,7 +4,7 @@ import {
   X, MapPin, Calendar, Truck, User, FileText, Activity, DollarSign,
   Clock, Phone, MessageSquare, AlertTriangle, CheckCircle,
   Navigation, Layers, Lock, ShieldAlert, Download, RefreshCw,
-  Star, Search, Zap, Package, ArrowRight, ChevronRight,
+  Star, Search, Zap, Package, ArrowRight, ChevronRight, CornerDownRight,
 } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { TripTimeline } from './TripTimeline';
@@ -17,6 +17,8 @@ import { useOperationalData } from '../../../../../shared/context/OperationalDat
 import { CompletedTrip, SharedVehicle } from '../../../../../shared/context/OperationalDataStore';
 import { useNavigate } from 'react-router-dom';
 import { ReportIssueModal } from './ReportIssueModal';
+import { DeliveryDiversionModal } from './DeliveryDiversionModal';
+import { exceptionManager, ExceptionCategory, ExceptionSeverity } from '../../../../../shared/services/exceptionManager';
 
 interface TripDetailsModalProps {
   isOpen: boolean;
@@ -385,6 +387,7 @@ function statusStyle(s: TripStatusCode) {
   if (['POD_SOFT_UPLOADED', 'POD_HARD_RECEIVED'].includes(s)) return { bg: 'bg-teal-600', text: 'text-white', dot: 'bg-teal-300' };
   if (['REACHED_DESTINATION', 'UNLOADING_STARTED', 'UNLOADING_COMPLETED'].includes(s)) return { bg: 'bg-green-600', text: 'text-white', dot: 'bg-green-300' };
   if (s === 'IN_TRANSIT') return { bg: 'bg-blue-600', text: 'text-white', dot: 'bg-blue-300' };
+  if (s === 'DELIVERY_DIVERTED') return { bg: 'bg-amber-500', text: 'text-white', dot: 'bg-amber-200' };
   if (['VEHICLE_ASSIGNED', 'DISPATCHED'].includes(s)) return { bg: 'bg-indigo-600', text: 'text-white', dot: 'bg-indigo-300' };
   return { bg: 'bg-amber-500', text: 'text-white', dot: 'bg-amber-300' }; // INDENT_RECEIVED
 }
@@ -398,6 +401,7 @@ export const TripDetailsModal: React.FC<TripDetailsModalProps> = ({ isOpen, onCl
   const [isUpdateModalOpen, setUpdateModalOpen] = useState(false);
   const [isClosureModalOpen, setClosureModalOpen] = useState(false);
   const [isReportIssueOpen, setReportIssueOpen] = useState(false);
+  const [isDiversionOpen, setDiversionOpen] = useState(false);
   const [isAssignVehicleOpen, setAssignVehicleOpen] = useState(false);
 
   const [localStatus, setLocalStatus] = useState<TripStatusCode | null>(null);
@@ -411,6 +415,7 @@ export const TripDetailsModal: React.FC<TripDetailsModalProps> = ({ isOpen, onCl
       setUpdateModalOpen(false);
       setClosureModalOpen(false);
       setReportIssueOpen(false);
+      setDiversionOpen(false);
       setAssignVehicleOpen(false);
     }
   }, [isOpen, tripId]);
@@ -865,6 +870,11 @@ export const TripDetailsModal: React.FC<TripDetailsModalProps> = ({ isOpen, onCl
                 <Button variant="outline" size="sm" className="text-red-500 border-red-100 hover:bg-red-50 hover:border-red-300" onClick={() => setReportIssueOpen(true)}>
                   <AlertTriangle className="h-3.5 w-3.5 mr-1.5" /> Report Issue
                 </Button>
+                {(currentStatus === 'IN_TRANSIT' || currentStatus === 'REACHED_DESTINATION') && (
+                  <Button variant="outline" size="sm" className="text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-400" onClick={() => setDiversionOpen(true)}>
+                    <CornerDownRight className="h-3.5 w-3.5 mr-1.5" /> Divert Delivery
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => { onClose(); navigate('/tms/tracking'); }}>
                   <Navigation className="h-3.5 w-3.5 mr-1.5" /> Track
                 </Button>
@@ -890,11 +900,48 @@ export const TripDetailsModal: React.FC<TripDetailsModalProps> = ({ isOpen, onCl
         onSuccess={handleClosureSuccess}
       />
 
+      <DeliveryDiversionModal
+        isOpen={isDiversionOpen}
+        onClose={() => setDiversionOpen(false)}
+        trip={baseTrip}
+        onDivert={(checkpoint) => {
+          setLocalCheckpoints(prev => [...prev, checkpoint]);
+          setLocalStatus('DELIVERY_DIVERTED');
+          setDiversionOpen(false);
+        }}
+      />
+
       <ReportIssueModal
         isOpen={isReportIssueOpen}
         onClose={() => setReportIssueOpen(false)}
         tripId={tripId}
-        onSubmit={() => {
+        onSubmit={(issueData) => {
+          const categoryMap: Record<string, ExceptionCategory> = {
+            VEHICLE_BREAKDOWN: 'vehicle_breakdown',
+            ACCIDENT: 'accident',
+            ROUTE_DEVIATION: 'route_deviation',
+            DRIVER_UNREACHABLE: 'driver_issue',
+            DOCUMENT_ISSUE: 'documentation_issue',
+            OTHER: 'other',
+          };
+          const severityMap: Record<string, ExceptionSeverity> = {
+            CRITICAL: 'critical',
+            HIGH: 'high',
+            MEDIUM: 'medium',
+            LOW: 'low',
+          };
+          const category = categoryMap[issueData.issueType] ?? 'other';
+          const requiresReplacement = ['vehicle_breakdown', 'accident'].includes(category);
+          exceptionManager.raise({
+            tripId: issueData.tripId,
+            bookingRef: baseTrip.bookingRef || issueData.tripId,
+            category,
+            severity: severityMap[issueData.priority] ?? 'high',
+            title: issueData.issueType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            description: issueData.description,
+            raisedBy: 'CurrentUser',
+            requiresReplacementVehicle: requiresReplacement,
+          });
         }}
       />
     </>

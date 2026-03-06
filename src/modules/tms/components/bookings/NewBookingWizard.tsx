@@ -7,9 +7,8 @@ import { BasicDetailsStep } from './steps/BasicDetailsStep';
 import { CargoRouteStep } from './steps/CargoRouteStep';
 import { RateVehicleStep } from './steps/RateVehicleStep';
 import { ReviewSubmitStep } from './steps/ReviewSubmitStep';
-import { ConsolidationStep } from './steps/ConsolidationStep';
 import { Button } from '../ui/Button';
-import { Check, ChevronRight, ChevronLeft, Save, Truck, Layers } from 'lucide-react';
+import { Check, ChevronRight, ChevronLeft, Save, Truck } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { useOperationalData } from '../../../../shared/context/OperationalDataContext';
 
@@ -20,15 +19,12 @@ export const NewBookingWizard: React.FC = () => {
     const { showToast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const isLTL = data.bookingType === 'PTL';
-
     // Dynamic Steps Definition
     const steps = [
         { id: 1, title: 'Basic Details' },
         { id: 2, title: 'Route & Cargo' },
-        ...(isLTL ? [{ id: 3, title: 'Consolidation' }] : []),
-        { id: isLTL ? 4 : 3, title: 'Rate & Vehicle' },
-        { id: isLTL ? 5 : 4, title: 'Review' },
+        { id: 3, title: 'Rate & Vehicle' },
+        { id: 4, title: 'Review' },
     ];
 
     const totalSteps = steps.length;
@@ -84,7 +80,6 @@ export const NewBookingWizard: React.FC = () => {
         switch (currentStepObj.title) {
             case 'Basic Details': return <BasicDetailsStep />;
             case 'Route & Cargo': return <CargoRouteStep />;
-            case 'Consolidation': return <ConsolidationStep />;
             case 'Rate & Vehicle': return <RateVehicleStep />;
             case 'Review': return <ReviewSubmitStep />;
             default: return null;
@@ -130,7 +125,7 @@ export const NewBookingWizard: React.FC = () => {
                         {/* Step Context Indicators */}
                         {currentStep > 1 && (
                             <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                {data.bookingType === 'FTL' ? <Truck className="h-4 w-4" /> : <Layers className="h-4 w-4" />}
+                                <Truck className="h-4 w-4" />
                                 <span className="font-medium">{data.bookingType}</span>
                                 <span className="mx-1">•</span>
                                 <span>{data.clientName || 'New Client'}</span>
@@ -157,12 +152,9 @@ export const NewBookingWizard: React.FC = () => {
                         )}
 
                         {currentStep < totalSteps ? (
-                            // Only show Next button if NOT on Consolidation step (it handles its own navigation)
-                            steps.find(s => s.id === currentStep)?.title !== 'Consolidation' && (
-                                <Button onClick={nextStep} className="px-6">
-                                    Next Step <ChevronRight className="h-4 w-4 ml-1" />
-                                </Button>
-                            )
+                            <Button onClick={nextStep} className="px-6">
+                                Next Step <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
                         ) : (
                             <Button onClick={handleSubmit} isLoading={isSubmitting} className="bg-green-600 hover:bg-green-700 px-8">
                                 Confirm & Submit
