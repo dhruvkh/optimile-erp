@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { DashboardVehicle, VehicleStatusType } from './types';
 import { generateMockFleet } from './utils';
 import { Search, Filter, MapPin, Activity, Navigation, AlertTriangle, Info, X } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import { HistoryPlaybackModal, PlaybackAlertPoint, PlaybackPoint } from '../../../fleet-control/components/HistoryPlaybackModal';
 
 import 'leaflet/dist/leaflet.css';
 
@@ -37,20 +38,26 @@ const createCustomIcon = (color: string) => {
    });
 };
 
-const statusColors: Record<VehicleStatusType, string> = {
-   moving: '#22c55e', // Green
-   short_stop: '#eab308', // Yellow
-   long_stop: '#f97316', // Orange
-   offline: '#ef4444', // Red
-   deviated: '#a855f7', // Purple
+type OpsStatus = 'Moving' | 'Idle' | 'Stopped' | 'Offline';
+const statusColors: Record<OpsStatus, string> = {
+   Moving: '#22c55e',
+   Idle: '#eab308',
+   Stopped: '#ef4444',
+   Offline: '#94a3b8',
 };
 
-const statusLabels: Record<VehicleStatusType, string> = {
-   moving: 'Moving',
-   short_stop: 'Short Stop',
-   long_stop: 'Long Stop',
-   offline: 'Offline / No Track',
-   deviated: 'Route Deviated',
+const statusLabels: Record<OpsStatus, string> = {
+   Moving: 'Moving',
+   Idle: 'Idle',
+   Stopped: 'Stopped',
+   Offline: 'Offline',
+};
+
+const toOpsStatus = (status: VehicleStatusType): OpsStatus => {
+   if (status === 'moving') return 'Moving';
+   if (status === 'short_stop') return 'Idle';
+   if (status === 'long_stop' || status === 'deviated') return 'Stopped';
+   return 'Offline';
 };
 
 
@@ -77,12 +84,34 @@ const MapResizeFix = () => {
    return null;
 };
 
+const MapZoomWatcher = ({ onZoom }: { onZoom: (zoom: number) => void }) => {
+   useMapEvents({
+      zoomend: (e) => onZoom(e.target.getZoom()),
+   });
+   return null;
+};
+
+const clusterIcon = (count: number, status: OpsStatus) =>
+   new L.DivIcon({
+      className: '',
+      html: `<div style="
+         width:40px;height:40px;border-radius:999px;background:${statusColors[status]};
+         color:#fff;border:2px solid #fff;display:flex;align-items:center;justify-content:center;
+         font-size:12px;font-weight:700;box-shadow:0 8px 16px rgba(0,0,0,.22);
+      ">${count}</div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+   });
+
 
 export const VehicleTrackingDashboard: React.FC = () => {
+   const mapRef = useRef<L.Map | null>(null);
    const [vehicles, setVehicles] = useState<DashboardVehicle[]>([]);
    const [searchQuery, setSearchQuery] = useState('');
-   const [statusFilter, setStatusFilter] = useState<VehicleStatusType | 'all'>('all');
+   const [statusFilter, setStatusFilter] = useState<OpsStatus | 'all'>('all');
    const [selectedVehicle, setSelectedVehicle] = useState<DashboardVehicle | null>(null);
+   const [mapZoom, setMapZoom] = useState(5);
+   const [historyOpen, setHistoryOpen] = useState(false);
 
    // Initial Data Load & Simulation Loop
    useEffect(() => {
@@ -116,10 +145,72 @@ export const VehicleTrackingDashboard: React.FC = () => {
       return vehicles.filter(v => {
          const matchesSearch = v.plateNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
             v.id.toLowerCase().includes(searchQuery.toLowerCase());
-         const matchesStatus = statusFilter === 'all' || v.status === statusFilter;
+         const matchesStatus = statusFilter === 'all' || toOpsStatus(v.status) === statusFilter;
          return matchesSearch && matchesStatus;
       });
    }, [vehicles, searchQuery, statusFilter]);
+
+   const clusteredVehicles = useMemo(() => {
+      if (mapZoom >= 8) return [];
+      const cellSize = mapZoom <= 5 ? 1.1 : mapZoom <= 6 ? 0.75 : 0.5;
+      const buckets = new Map<string, { lat: number; lng: number; vehicles: DashboardVehicle[] }>();
+      filteredVehicles.forEach((v) => {
+         const cellLat = Math.floor(v.position.latitude / cellSize);
+         const cellLng = Math.floor(v.position.longitude / cellSize);
+         const key = `${cellLat}:${cellLng}`;
+         const existing = buckets.get(key);
+         if (!existing) {
+            buckets.set(key, { lat: v.position.latitude, lng: v.position.longitude, vehicles: [v] });
+         } else {
+            existing.vehicles.push(v);
+            existing.lat = existing.vehicles.reduce((a, x) => a + x.position.latitude, 0) / existing.vehicles.length;
+            existing.lng = existing.vehicles.reduce((a, x) => a + x.position.longitude, 0) / existing.vehicles.length;
+         }
+      });
+      return Array.from(buckets.values())
+         .filter((bucket) => bucket.vehicles.length > 1)
+         .map((bucket) => {
+            const statuses = bucket.vehicles.map((v) => toOpsStatus(v.status));
+            const dominant: OpsStatus = statuses.includes('Stopped')
+               ? 'Stopped'
+               : statuses.includes('Moving')
+                  ? 'Moving'
+                  : statuses.includes('Idle')
+                     ? 'Idle'
+                     : 'Offline';
+            return {
+               position: [bucket.lat, bucket.lng] as [number, number],
+               vehicles: bucket.vehicles,
+               status: dominant,
+            };
+         });
+   }, [filteredVehicles, mapZoom]);
+
+   const playbackPoints = useMemo<PlaybackPoint[]>(() => {
+      if (!selectedVehicle) return [];
+      const baseLat = selectedVehicle.position.latitude;
+      const baseLng = selectedVehicle.position.longitude;
+      return Array.from({ length: 36 }).map((_, idx) => {
+         const t = Date.now() - (35 - idx) * 5 * 60 * 1000;
+         const drift = idx * 0.0025;
+         const speed = Math.max(0, Math.round(selectedVehicle.speed + (Math.random() - 0.5) * 25));
+         return {
+            lat: baseLat - 0.08 + drift + (Math.random() - 0.5) * 0.004,
+            lng: baseLng - 0.08 + drift + (Math.random() - 0.5) * 0.004,
+            speed,
+            timestamp: new Date(t).toISOString(),
+         };
+      });
+   }, [selectedVehicle]);
+
+   const playbackAlerts = useMemo<PlaybackAlertPoint[]>(() => {
+      const alerts: PlaybackAlertPoint[] = [];
+      playbackPoints.forEach((p, idx) => {
+         if (p.speed > 85 && alerts.length < 2) alerts.push({ lat: p.lat, lng: p.lng, timestamp: p.timestamp, label: 'Overspeed alert', severity: 'High' });
+         if (idx % 15 === 0 && alerts.length < 4) alerts.push({ lat: p.lat, lng: p.lng, timestamp: p.timestamp, label: 'Idle event', severity: 'Low' });
+      });
+      return alerts.slice(0, 5);
+   }, [playbackPoints]);
 
 
    const handleSelectVehicle = (vehicle: DashboardVehicle) => {
@@ -136,7 +227,7 @@ export const VehicleTrackingDashboard: React.FC = () => {
                <h1 className="text-2xl font-bold text-gray-900 flex items-center">
                   Fleet Overview
                   <Badge variant="success" className="ml-3">
-                     {vehicles.filter(v => v.status === 'moving').length} Active
+                     {vehicles.filter(v => toOpsStatus(v.status) === 'Moving').length} Active
                   </Badge>
                </h1>
             </div>
@@ -181,8 +272,10 @@ export const VehicleTrackingDashboard: React.FC = () => {
                   zoom={5}
                   className="h-full w-full"
                   zoomControl={false}
+                  ref={mapRef}
                >
                   <MapResizeFix />
+                  <MapZoomWatcher onZoom={setMapZoom} />
                   <TileLayer
                      attribution='&copy; <a href="https://maps.google.com">Google Maps</a>'
                      url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
@@ -194,24 +287,34 @@ export const VehicleTrackingDashboard: React.FC = () => {
                      <MapCenterUpdater position={[selectedVehicle.position.latitude, selectedVehicle.position.longitude]} />
                   )}
 
-                  {filteredVehicles.map(vehicle => (
-                     <Marker
-                        key={vehicle.id}
-                        position={[vehicle.position.latitude, vehicle.position.longitude]}
-                        icon={createCustomIcon(statusColors[vehicle.status])}
-                        eventHandlers={{
-                           click: () => handleSelectVehicle(vehicle)
-                        }}
-                     >
-                        {/* Optional: Small hover popup */}
-                        <Popup>
-                           <div className="text-center">
-                              <b>{vehicle.plateNumber}</b><br />
-                              {statusLabels[vehicle.status]} ({Math.round(vehicle.speed)} km/h)
-                           </div>
-                        </Popup>
-                     </Marker>
-                  ))}
+                  {mapZoom < 8
+                     ? clusteredVehicles.map((cluster, idx) => (
+                        <Marker
+                           key={`cluster-${idx}`}
+                           position={cluster.position}
+                           icon={clusterIcon(cluster.vehicles.length, cluster.status)}
+                           eventHandlers={{
+                              click: () => mapRef.current?.flyTo(cluster.position, Math.min(11, mapZoom + 2), { duration: 0.5 }),
+                           }}
+                        />
+                     ))
+                     : filteredVehicles.map(vehicle => (
+                        <Marker
+                           key={vehicle.id}
+                           position={[vehicle.position.latitude, vehicle.position.longitude]}
+                           icon={createCustomIcon(statusColors[toOpsStatus(vehicle.status)])}
+                           eventHandlers={{
+                              click: () => handleSelectVehicle(vehicle)
+                           }}
+                        >
+                           <Popup>
+                              <div className="text-center">
+                                 <b>{vehicle.plateNumber}</b><br />
+                                 {statusLabels[toOpsStatus(vehicle.status)]} ({Math.round(vehicle.speed)} km/h)
+                              </div>
+                           </Popup>
+                        </Marker>
+                     ))}
                </MapContainer>
 
                {/* Map Legend Overlay */}
@@ -221,7 +324,7 @@ export const VehicleTrackingDashboard: React.FC = () => {
                      {Object.entries(statusColors).map(([status, color]) => (
                         <div key={status} className="flex items-center text-xs">
                            <span className="w-3 h-3 rounded-full mr-2 shadow-sm" style={{ backgroundColor: color }}></span>
-                           <span className="text-gray-700">{statusLabels[status as VehicleStatusType]}</span>
+                           <span className="text-gray-700">{statusLabels[status as OpsStatus]}</span>
                         </div>
                      ))}
                   </div>
@@ -233,7 +336,7 @@ export const VehicleTrackingDashboard: React.FC = () => {
                <div className="absolute top-4 right-4 w-80 bg-white rounded-xl shadow-2xl z-[1000] border border-gray-100 flex flex-col overflow-hidden animate-in slide-in-from-right-4 duration-200">
                   <div className="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center">
                      <div className="flex items-center">
-                        <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: statusColors[selectedVehicle.status] }}></span>
+                        <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: statusColors[toOpsStatus(selectedVehicle.status)] }}></span>
                         <h3 className="font-bold text-gray-900">{selectedVehicle.plateNumber}</h3>
                      </div>
                      <button onClick={() => setSelectedVehicle(null)} className="p-1 hover:bg-gray-200 rounded-full text-gray-500 transition-colors">
@@ -245,7 +348,7 @@ export const VehicleTrackingDashboard: React.FC = () => {
                      <div className="grid grid-cols-2 gap-4">
                         <div className="bg-gray-50 p-2 rounded-lg">
                            <p className="text-xs text-gray-500 mb-1 flex items-center"><Activity className="w-3 h-3 mr-1" /> Status</p>
-                           <p className="text-sm font-semibold">{statusLabels[selectedVehicle.status]}</p>
+                           <p className="text-sm font-semibold">{statusLabels[toOpsStatus(selectedVehicle.status)]}</p>
                         </div>
                         <div className="bg-gray-50 p-2 rounded-lg">
                            <p className="text-xs text-gray-500 mb-1 flex items-center"><Navigation className="w-3 h-3 mr-1" /> Speed</p>
@@ -292,11 +395,20 @@ export const VehicleTrackingDashboard: React.FC = () => {
                         )}
                      </div>
 
-                     <Button className="w-full text-xs" variant="outline">View Full History</Button>
+                     <Button className="w-full text-xs" variant="outline" onClick={() => setHistoryOpen(true)}>View Full History</Button>
                   </div>
                </div>
             )}
          </div>
+
+         <HistoryPlaybackModal
+            isOpen={historyOpen}
+            onClose={() => setHistoryOpen(false)}
+            vehicleRegistration={selectedVehicle?.plateNumber || ''}
+            driverName={selectedVehicle?.driverName || 'Unassigned'}
+            points={playbackPoints}
+            alertPoints={playbackAlerts}
+         />
       </div>
    );
 };

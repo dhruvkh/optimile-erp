@@ -63,6 +63,7 @@ import { MaintenancePage as FleetMaintenance } from './modules/fleet-control/pag
 import { CompliancePage as FleetCompliance } from './modules/fleet-control/pages/CompliancePage';
 import { OpsIntelligencePage as FleetOpsIntel } from './modules/fleet-control/pages/OpsIntelligencePage';
 import { ExceptionCenterPage as FleetExceptions } from './modules/fleet-control/pages/ExceptionCenterPage';
+import { AlertManagementPage as FleetAlerts } from './modules/fleet-control/pages/AlertManagementPage';
 import { DataCoveragePage as FleetCoverage } from './modules/fleet-control/pages/DataCoveragePage';
 import { ReconciliationPage as FleetReconciliation } from './modules/fleet-control/pages/ReconciliationPage';
 import { LiveMapPage as FleetLiveMap } from './modules/fleet-control/pages/LiveMapPage';
@@ -185,6 +186,7 @@ const App: React.FC = () => {
                 <Route path="fleet/dashboard" element={<FleetDashboard onNavigate={() => { }} />} />
                 <Route path="fleet/ops-intel" element={<FleetOpsIntel />} />
                 <Route path="fleet/exceptions" element={<FleetExceptions />} />
+                <Route path="fleet/alerts" element={<FleetAlerts />} />
                 <Route path="fleet/coverage" element={<FleetCoverage />} />
                 <Route path="fleet/reconciliation" element={<FleetReconciliation />} />
                 <Route path="fleet/live-map" element={<FleetLiveMap />} />
