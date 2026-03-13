@@ -9,6 +9,7 @@ import { useUI } from '../../shared/context/UIContext';
 import { useAuth } from '../../shared/context/AuthContext';
 import { OptimileLogo } from './OptimileLogo';
 import { ERPModule } from '../../shared/types';
+import easyLaneLogo from '../../assets/EasyLane-logo.jpeg';
 
 export const Sidebar: React.FC = () => {
   const { sidebarOpen, closeSidebar } = useUI();
@@ -55,7 +56,7 @@ export const Sidebar: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between h-16 px-6 bg-primary text-white shrink-0">
           <div className="flex items-center space-x-2">
-            <OptimileLogo className="h-10 w-auto text-white" />
+            <img src={easyLaneLogo} alt="EasyLane logo" className="h-10 w-auto text-white" />
           </div>
           <button
             onClick={closeSidebar}

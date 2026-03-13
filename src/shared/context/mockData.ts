@@ -11,8 +11,8 @@ import { Tenant, User, ERPModule } from '../types';
 export const MOCK_TENANTS: Tenant[] = [
   {
     id: 'T-001',
-    name: 'ABC Logistics Pvt Ltd',
-    slug: 'abc-logistics',
+    name: 'EasyLane Logistics',
+    slug: 'easylane-logistics',
     logo: '',
     modules: ['tms', 'fleet-control', 'ams', 'finance'],
     status: 'active',
@@ -20,7 +20,7 @@ export const MOCK_TENANTS: Tenant[] = [
   },
   {
     id: 'T-002',
-    name: 'XYZ Transport Co',
+    name: 'EasyLane Logistics',
     slug: 'xyz-transport',
     logo: '',
     modules: ['tms', 'fleet-control'],  // Only TMS + Fleet licensed

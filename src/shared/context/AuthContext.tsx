@@ -30,16 +30,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getAuthStorage = (): Storage => {
+    if (localStorage.getItem('optimile_erp_user')) return localStorage;
+    if (sessionStorage.getItem('optimile_erp_user')) return sessionStorage;
+    return localStorage;
+  };
+
   useEffect(() => {
     const storedUser = localStorage.getItem('optimile_erp_user') || sessionStorage.getItem('optimile_erp_user');
     const storedTenant = localStorage.getItem('optimile_erp_tenant') || sessionStorage.getItem('optimile_erp_tenant');
-    if (storedUser && storedTenant) {
+    if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
-        setTenant(JSON.parse(storedTenant));
+        const parsedUser = JSON.parse(storedUser) as User;
+        const parsedTenant = storedTenant ? (JSON.parse(storedTenant) as Tenant) : null;
+
+        // Always resolve tenant from latest mock source so name/module updates reflect in UI.
+        const resolvedTenant =
+          MOCK_TENANTS.find((t) => t.id === parsedUser.tenantId) ||
+          (parsedTenant ? MOCK_TENANTS.find((t) => t.id === parsedTenant.id) : null) ||
+          parsedTenant;
+
+        setUser(parsedUser);
+        setTenant(resolvedTenant || null);
+
+        if (resolvedTenant) {
+          const storage = getAuthStorage();
+          storage.setItem('optimile_erp_tenant', JSON.stringify(resolvedTenant));
+        }
       } catch (e) {
         localStorage.removeItem('optimile_erp_user');
         localStorage.removeItem('optimile_erp_tenant');
+        sessionStorage.removeItem('optimile_erp_user');
+        sessionStorage.removeItem('optimile_erp_tenant');
       }
     }
     setLoading(false);
@@ -110,7 +132,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const switchTenant = (tenantId: string) => {
     const newTenant = MOCK_TENANTS.find(t => t.id === tenantId);
-    if (newTenant) setTenant(newTenant);
+    if (newTenant) {
+      setTenant(newTenant);
+      const storage = getAuthStorage();
+      storage.setItem('optimile_erp_tenant', JSON.stringify(newTenant));
+    }
   };
 
   return (
