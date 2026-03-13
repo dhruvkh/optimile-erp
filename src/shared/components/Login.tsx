@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/context/AuthContext';
-import { OptimileLogo } from './OptimileLogo';
-import { Truck, Eye, EyeOff } from 'lucide-react';
+import easyLaneLogo from '../../assets/EasyLane-logo.jpeg';
+import { Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -33,8 +33,8 @@ export const Login: React.FC = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary via-secondary to-primary/80 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <OptimileLogo className="h-12 w-auto text-white mx-auto mb-3" />
-          <h1 className="text-2xl font-bold text-white">Optimile ERP</h1>
+          <img src={easyLaneLogo} alt="Easylane Logistics logo" className="h-12 w-auto mx-auto mb-3" />
+          <h1 className="text-2xl font-bold text-white">Easylane Logistics</h1>
           <p className="text-white/70 text-sm mt-1">Logistics Enterprise Resource Planning</p>
         </div>
 
