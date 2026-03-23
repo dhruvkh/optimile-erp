@@ -3,7 +3,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { DashboardVehicle, VehicleStatusType } from './types';
-import { generateMockFleet } from './utils';
+import { fleetFeed } from '../../services/fleetFeed';
 import { Search, Filter, MapPin, Activity, Navigation, AlertTriangle, Info, X } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -113,31 +113,15 @@ export const VehicleTrackingDashboard: React.FC = () => {
    const [mapZoom, setMapZoom] = useState(5);
    const [historyOpen, setHistoryOpen] = useState(false);
 
-   // Initial Data Load & Simulation Loop
+   // Subscribe to fleet feed for live updates
    useEffect(() => {
-      const initialFleet = generateMockFleet();
-      setVehicles(initialFleet);
+      const unsubscribe = fleetFeed.subscribe((fleet: DashboardVehicle[]) => {
+         setVehicles(fleet);
+      });
 
-      const interval = setInterval(() => {
-         setVehicles(current =>
-            current.map(v => {
-               // Simulate movement for 'moving' vehicles
-               if (v.status === 'moving') {
-                  return {
-                     ...v,
-                     position: {
-                        ...v.position,
-                        latitude: v.position.latitude + (Math.random() - 0.5) * 0.001,
-                        longitude: v.position.longitude + (Math.random() - 0.5) * 0.001,
-                     }
-                  };
-               }
-               return v;
-            })
-         );
-      }, 5000);
-
-      return () => clearInterval(interval);
+      return () => {
+         unsubscribe();
+      };
    }, []);
 
 
