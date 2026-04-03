@@ -134,6 +134,7 @@ import { AuctionAcceptanceDashboard } from './modules/ams/components/AuctionAcce
 import { DisputesDashboard } from './modules/ams/components/common/DisputesDashboard';
 import { DisputeDetailPage } from './modules/ams/components/common/DisputeDetailPage';
 import { DisputeCreatePage } from './modules/ams/components/common/DisputeCreatePage';
+import { RateBenchmarkingPage } from './modules/ams/components/common/RateBenchmarkingPage';
 
 
 const App: React.FC = () => {
@@ -252,6 +253,7 @@ const App: React.FC = () => {
                 <Route path="ams/sla" element={<LiveSLAMonitor />} />
                 <Route path="ams/analytics/savings" element={<SavingsAnalysisPage />} />
                 <Route path="ams/analytics/vendors" element={<VendorInsightsDashboard />} />
+                <Route path="ams/analytics/rate-benchmarking" element={<RateBenchmarkingPage />} />
 
                 {/* Vendor Onboarding sub-pages */}
                 <Route path="ams/vendors/onboarding" element={<VendorOnboardingDashboard />} />

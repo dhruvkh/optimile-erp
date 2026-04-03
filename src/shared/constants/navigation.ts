@@ -118,6 +118,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { label: 'SLA Monitor', path: '/ams/sla', icon: Timer, module: 'ams', requiredPermissions: ['ams.sla'] },
       { label: 'Savings Analysis', path: '/ams/analytics/savings', icon: TrendingUp, module: 'ams', requiredPermissions: ['ams.analytics'] },
       { label: 'Vendor Insights', path: '/ams/analytics/vendors', icon: Activity, module: 'ams', requiredPermissions: ['ams.analytics'] },
+      { label: 'Rate Benchmarking', path: '/ams/analytics/rate-benchmarking', icon: BarChart3, module: 'ams', requiredPermissions: ['ams.analytics'] },
       { label: 'Vendor Onboarding', path: '/ams/vendors/onboarding', icon: Users, module: 'ams', requiredPermissions: ['ams.admin'] },
       { label: 'Disputes', path: '/ams/disputes', icon: AlertTriangle, module: 'ams', requiredPermissions: ['ams.admin'] },
       { label: 'Audit Trail', path: '/ams/audit', icon: History, module: 'ams', requiredPermissions: ['ams.admin'] },
