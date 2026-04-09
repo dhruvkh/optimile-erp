@@ -5,6 +5,7 @@ import { OperationsMap } from './OperationsMap';
 import { AlertsFeed } from './AlertsFeed';
 import { AnalyticsSection } from './AnalyticsSection';
 import { Button } from '../ui/Button';
+import { AIInsightsPanel } from '../../../../shared/components/AIInsightsPanel';
 
 export const ExecutiveDashboard: React.FC = () => {
   return (
@@ -73,6 +74,37 @@ export const ExecutiveDashboard: React.FC = () => {
           icon={Clock}
         />
       </div>
+
+      <AIInsightsPanel
+        summary="Quick read on demand, service, and cost movement."
+        insights={[
+          {
+            label: 'Demand',
+            title: 'Demand is outpacing last week',
+            metric: '+18 trips',
+            tone: 'positive',
+            description: 'Shipment flow is rising faster than the rest of the dashboard.',
+            action: 'Add capacity on the busiest lanes.',
+          },
+          {
+            label: 'Service',
+            title: 'Service reliability is close to target',
+            metric: '89% OTD',
+            tone: 'watch',
+            description: 'Delivery performance is improving but still below a strong comfort zone.',
+            action: 'Check delayed hubs and exceptions.',
+          },
+          {
+            label: 'Cost',
+            title: 'Cost gains are worth protecting',
+            metric: '₹28.50/km',
+            tone: 'info',
+            description: 'Cost per KM improved, so the current route mix is working.',
+            action: 'Prefer high-utilization fleet before spot buys.',
+          },
+        ]}
+        footer="AI insights are generated from the executive KPI snapshot and should be used as a prioritization aid."
+      />
 
       {/* Main Content Grid: Map + Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[600px]">

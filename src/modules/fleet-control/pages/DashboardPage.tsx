@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Vehicle, VehicleStatus, ExceptionSeverity, DocumentStatus, MaintenanceHealthStatus } from '../types';
 import { VehicleAPI, ExceptionAPI, MaintenanceAPI, EnergyAPI, ComplianceAPI, ConfidenceAPI, SyncAPI, TyreAPI } from '../services/mockDatabase';
 import { IconCheck, IconAlert, IconWrench, IconZap, IconShield, IconCircleDollar, IconTruck, IconArrowRight, IconSiren, IconTrendDown, IconTrendUp, IconMapPin, IconDroplet, IconTyre } from '../components/Icons';
 import { Badge } from '../components/UI';
 import { VehicleDetailsPage } from './VehicleDetailsPage';
+import { AIInsightsPanel } from '../../../shared/components/AIInsightsPanel';
 
 interface DashboardPageProps {
   onNavigate: (tab: any) => void;
@@ -225,6 +226,33 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
       return { top: `${top}%`, left: `${left}%` };
   };
 
+  const aiInsights = useMemo(() => ([
+    {
+      label: 'Readiness',
+      title: 'Fleet readiness trend',
+      metric: `${kpiData.availabilityPct}%`,
+      tone: kpiData.availabilityPct >= 85 ? 'positive' : kpiData.availabilityPct >= 75 ? 'watch' : 'critical',
+      description: `${buckets.healthy} of ${kpiData.totalFleet} vehicles are currently healthy.`,
+      action: 'Plan dispatch from healthy and compliant vehicles first.',
+    },
+    {
+      label: 'Risk',
+      title: 'Risk stack is concentrated',
+      metric: `${kpiData.vehiclesAtRisk + kpiData.energyRiskCount}`,
+      tone: liveAlerts.length >= 4 || kpiData.vehiclesAtRisk > 0 ? 'critical' : 'watch',
+      description: `${kpiData.vehiclesAtRisk} vehicles have major exceptions and ${kpiData.energyRiskCount} show energy anomalies.`,
+      action: 'Review overlapping risk vehicles first.',
+    },
+    {
+      label: 'Maintenance',
+      title: 'Maintenance drag is building',
+      metric: `${kpiData.maintenanceDueCount} due`,
+      tone: intelData.chronicBreakdowns > 0 || intelData.tyreAlerts > 0 ? 'watch' : 'info',
+      description: `${intelData.chronicBreakdowns} chronic breakdown vehicles and ${intelData.tyreAlerts} tyre alerts need attention.`,
+      action: 'Prioritize overdue service and tyre-risk assets.',
+    },
+  ]), [buckets.healthy, intelData.chronicBreakdowns, intelData.tyreAlerts, kpiData.availabilityPct, kpiData.energyRiskCount, kpiData.maintenanceDueCount, kpiData.totalFleet, kpiData.vehiclesAtRisk, liveAlerts.length]);
+
   if (selectedVehicleId) {
       return <VehicleDetailsPage vehicleId={selectedVehicleId} onBack={() => setSelectedVehicleId(null)} />;
   }
@@ -265,6 +293,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate }) => {
               </div>
           )}
       </div>
+
+      <AIInsightsPanel
+        title="AI Insights: Fleet Control"
+        summary="Quick read on readiness, risk, and maintenance load."
+        insights={aiInsights}
+        footer="AI recommendations are based on the current fleet-health snapshot and refresh with the dashboard polling cycle."
+      />
 
       {/* 2. KPI Cards (Top Row) */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
