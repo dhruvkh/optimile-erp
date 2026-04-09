@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { auctionEngine } from '../../services/mockBackend';
 import { Auction, AuctionStatus } from '../../types';
 import { Link } from 'react-router-dom';
 import { Eye, Plus } from 'lucide-react';
+import { AIInsightsPanel } from '../../../../shared/components/AIInsightsPanel';
 
 export function Dashboard() {
   const [auctions, setAuctions] = useState<Auction[]>([]);
@@ -27,6 +28,44 @@ export function Dashboard() {
     [AuctionStatus.CANCELLED]: 'bg-red-50 text-red-600',
   };
 
+  const aiInsights = useMemo(() => {
+    const running = auctions.filter((auction) => auction.status === AuctionStatus.RUNNING).length;
+    const published = auctions.filter((auction) => auction.status === AuctionStatus.PUBLISHED).length;
+    const completed = auctions.filter((auction) => auction.status === AuctionStatus.COMPLETED).length;
+    const stalled = auctions.filter((auction) => [AuctionStatus.DRAFT, AuctionStatus.PAUSED].includes(auction.status)).length;
+
+    return [
+      {
+        label: 'Live Auctions',
+        title: 'Live sourcing momentum',
+        metric: `${running} live`,
+        tone: running > 0 ? 'positive' : 'watch',
+        description: running > 0
+          ? `${running} auctions are active in the market.`
+          : 'No auctions are running right now.',
+        action: 'Keep critical lanes live.',
+      },
+      {
+        label: 'Pipeline',
+        title: 'Publish-ready queue',
+        metric: `${published} queued`,
+        tone: published > 0 ? 'info' : 'watch',
+        description: `${published} auctions are queued for the next bidding cycle.`,
+        action: 'Check timing and vendor invite coverage.',
+      },
+      {
+        label: 'Blockers',
+        title: 'Execution drag',
+        metric: `${stalled} stalled`,
+        tone: stalled > 0 ? 'critical' : 'positive',
+        description: stalled > 0
+          ? `${stalled} auctions are still in draft or paused state.`
+          : `${completed} auctions have completed with no active blockers.`,
+        action: 'Clear stalled auctions first.',
+      },
+    ];
+  }, [auctions]);
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -38,6 +77,15 @@ export function Dashboard() {
           <Plus size={18} />
           <span>Create Auction</span>
         </Link>
+      </div>
+
+      <div className="mb-8">
+        <AIInsightsPanel
+          title="AI Insights: Procurement AMS"
+          summary="Quick read on live auctions, pipeline, and blockers."
+          insights={aiInsights}
+          footer="Insights are generated from the live auction snapshot inside the procurement dashboard."
+        />
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm">

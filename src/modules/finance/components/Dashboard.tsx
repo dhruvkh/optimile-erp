@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { Vehicle, Booking } from '../types';
 import { DashboardSkeleton } from './Skeleton';
+import { AIInsightsPanel } from '../../../shared/components/AIInsightsPanel';
 
 // Helper for formatting
 const formatINR = (amount: number) =>
@@ -612,9 +613,6 @@ const Dashboard: React.FC = () => {
 
   const isOpsManager = state.currentUser.role === 'Operations Manager';
 
-  // Use Skeleton Loader
-  if (state.isLoading) return <DashboardSkeleton />;
-
   // Data Aggregation for KPI Cards
   const totalBalance = state.invoices.filter(i => i.status === 'paid').reduce((a, b) => a + b.amount, 0) -
     state.expenses.reduce((a, b) => a + b.amount, 0);
@@ -647,9 +645,69 @@ const Dashboard: React.FC = () => {
   }, [state.invoices]);
   const sparkMax = Math.max(...sparkRaw, 1);
   const sparkData = sparkRaw.map(val => ({ val: Math.round((val / sparkMax) * 100) }));
+  const pendingLossTrips = state.bookings.filter(b => b.status === 'pending' && b.expense > b.amount);
+  const highCostLane = useMemo(() => {
+    const laneMap: Record<string, { route: string; expense: number; distance: number }> = {};
+    state.bookings.forEach((booking) => {
+      const route = `${booking.origin} - ${booking.destination}`;
+      if (!laneMap[route]) {
+        laneMap[route] = { route, expense: 0, distance: 0 };
+      }
+      laneMap[route].expense += booking.expense;
+      laneMap[route].distance += booking.distance;
+    });
+
+    return Object.values(laneMap)
+      .map((lane) => ({
+        ...lane,
+        cpkm: lane.distance ? lane.expense / lane.distance : 0,
+      }))
+      .sort((a, b) => b.cpkm - a.cpkm)[0];
+  }, [state.bookings]);
+  const aiInsights = useMemo(() => ([
+    {
+      label: 'Cash',
+      title: 'Liquidity position',
+      metric: formatCompactINR(totalBalance),
+      tone: totalBalance >= 0 ? 'positive' : 'critical',
+      description: `Receivables ${formatCompactINR(receivables)} vs payables ${formatCompactINR(payables)}.`,
+      action: 'Collect aging buckets before fresh cash release.',
+    },
+    {
+      label: 'Margin',
+      title: 'Loss-making trips need review',
+      metric: `${pendingLossTrips.length}`,
+      tone: pendingLossTrips.length > 0 ? 'critical' : 'positive',
+      description: pendingLossTrips.length > 0
+        ? `${pendingLossTrips.length} pending trips are projecting negative contribution.`
+        : 'No pending trips are currently projecting losses.',
+      action: 'Review negative-margin trips before invoice.',
+    },
+    {
+      label: 'Lane Cost',
+      title: 'Highest cost lane',
+      metric: highCostLane ? `₹${highCostLane.cpkm.toFixed(2)}/km` : 'N/A',
+      tone: highCostLane && highCostLane.cpkm > 0 ? 'watch' : 'info',
+      description: highCostLane
+        ? `${highCostLane.route} is the costliest active lane right now.`
+        : 'Lane cost insight will appear once route history builds.',
+      action: 'Tighten pricing or vendor allocation on this lane.',
+    },
+  ]), [highCostLane, payables, pendingLossTrips.length, receivables, totalBalance]);
+
+  // Use Skeleton Loader
+  if (state.isLoading) return <DashboardSkeleton />;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 pb-12">
+      <div className="col-span-1 md:col-span-2 xl:col-span-4">
+        <AIInsightsPanel
+          title="AI Insights: Finance"
+          summary="Quick read on cash, margin risk, and lane cost drift."
+          insights={aiInsights}
+          footer="Insights are computed from invoices, expenses, bookings, and shipment data already loaded into the finance dashboard."
+        />
+      </div>
 
       {/* Row 1: KPI Cards - Hidden for Ops Manager */}
       {!isOpsManager && (

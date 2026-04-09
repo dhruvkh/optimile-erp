@@ -11,6 +11,7 @@ import {
 import { ptlStore } from '../../services/ptlStore';
 import type { PTLDocket, PTLException } from '../../services/ptlTypes';
 import { getDocketRevenue, getDocketCost, calculateMargin } from '../../services/ptlBillingEngine';
+import { AIInsightsPanel } from '../../../../shared/components/AIInsightsPanel';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -374,6 +375,48 @@ export default function PTLDashboard() {
   const totalCost = dockets.filter(d => d.status === 'Delivered')
     .reduce((s, d) => s + getDocketCost(d), 0);
   const { grossMargin } = calculateMargin(totalRevenue, totalCost);
+  const criticalOpenExceptions = exceptions.filter(
+    e => e.severity === 'Critical' && e.status !== 'Resolved'
+  ).length;
+  const highestLoadHub = INITIAL_HUBS.map(hub => {
+    const activeCount = dockets.filter(
+      d => (d.originHubId === hub.id || d.destinationHubId === hub.id) &&
+        ['At Origin Hub', 'Manifested', 'At Destination Hub'].includes(d.status)
+    ).length;
+    return { ...hub, activeCount };
+  }).sort((a, b) => b.activeCount - a.activeCount)[0];
+  const aiInsights = useMemo(() => ([
+    {
+      label: 'Service',
+      title: 'PTL service risk',
+      metric: `${otpPct.toFixed(0)}%`,
+      tone: otpPct >= 92 ? 'positive' : otpPct >= 85 ? 'watch' : 'critical',
+      description: deliveredDockets.length > 0
+        ? `${onTimeDelivered.length} of ${deliveredDockets.length} delivered dockets were on time.`
+        : 'Delivery performance will appear once delivered dockets close.',
+      action: 'Re-sequence delayed dockets before cut-off.',
+    },
+    {
+      label: 'Exceptions',
+      title: 'Exception pressure',
+      metric: `${openExceptions.length} open`,
+      tone: criticalOpenExceptions > 0 ? 'critical' : openExceptions.length > 5 ? 'watch' : 'info',
+      description: criticalOpenExceptions > 0
+        ? `${criticalOpenExceptions} critical exceptions are still open.`
+        : 'Exception load is manageable right now.',
+      action: 'Escalate the highest-severity dockets first.',
+    },
+    {
+      label: 'Margin',
+      title: 'Margin concentration',
+      metric: totalRevenue > 0 ? `${((grossMargin / totalRevenue) * 100).toFixed(1)}%` : '0%',
+      tone: grossMargin > 0 ? 'positive' : 'critical',
+      description: highestLoadHub
+        ? `${highestLoadHub.city} is the busiest hub with ${highestLoadHub.activeCount} active dockets.`
+        : 'Hub activity will appear as dockets move through the network.',
+      action: 'Balance capacity around the busiest hub.',
+    },
+  ]), [criticalOpenExceptions, deliveredDockets.length, grossMargin, highestLoadHub, onTimeDelivered.length, openExceptions.length, otpPct, totalRevenue]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -461,6 +504,15 @@ export default function PTLDashboard() {
             </div>
           );
         })}
+      </div>
+
+      <div className="mb-6">
+        <AIInsightsPanel
+          title="AI Insights: PTL"
+          summary="Quick read on service, exception load, and margin pressure."
+          insights={aiInsights}
+          footer="Insights use the live PTL store and refresh when the dashboard data changes."
+        />
       </div>
 
       {/* ── Main Grid ── */}
