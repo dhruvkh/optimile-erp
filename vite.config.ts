@@ -4,6 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  cacheDir: '.vite',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -14,6 +15,6 @@ export default defineConfig({
   server: {
     host: true, // allow external access
     port: 4000,
-    allowedHosts: ['fleet.optimile.co'],
+    allowedHosts: ['fleet.optimile.co', 'app-v1.optimile.co'],
   },
 });

@@ -7,7 +7,6 @@ import { X, ChevronDown, ChevronRight } from 'lucide-react';
 import { NAV_SECTIONS } from '../../shared/constants/navigation';
 import { useUI } from '../../shared/context/UIContext';
 import { useAuth } from '../../shared/context/AuthContext';
-import { OptimileLogo } from './OptimileLogo';
 import { ERPModule } from '../../shared/types';
 import easyLaneLogo from '../../assets/EasyLane-logo.jpeg';
 
@@ -56,7 +55,8 @@ export const Sidebar: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between h-16 px-6 bg-primary text-white shrink-0">
           <div className="flex items-center space-x-2">
-            <img src={easyLaneLogo} alt="EasyLane logo" className="h-10 w-auto text-white" />
+            <img src={easyLaneLogo} alt="Easylane Logistics logo" className="h-10 w-auto text-white" />
+            <span className="text-xs font-semibold tracking-wide">Easylane Logistics</span>
           </div>
           <button
             onClick={closeSidebar}
@@ -145,7 +145,7 @@ export const Sidebar: React.FC = () => {
         {/* Footer */}
         <div className="shrink-0 border-t border-gray-200 p-4">
           <div className="text-xs text-gray-400">
-            &copy; 2025 Optimile ERP <br /> v1.0.0
+            &copy; 2025 Easylane Logistics <br /> v1.0.0
           </div>
         </div>
       </div>
