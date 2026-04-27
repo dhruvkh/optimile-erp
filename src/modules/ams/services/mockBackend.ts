@@ -2405,6 +2405,181 @@ class AuctionEngine {
     }
   }
 
+  // ── FTL Rate Benchmarking Demo Data ──────────────────────────────────────
+  // Injects 12 realistic FTL auction lanes with market-representative bid
+  // distributions spread across 12 weekly data points (past 84 days).
+  // Rates reflect Indian trucking market 2024-25 for common body sizes.
+  // Each lane is calibrated to produce a specific benchmark status so the
+  // Savings Map shows a clear, compelling demo mix for client presentations.
+  //
+  // Status mix: 5 Above Market (red), 4 At Market (blue), 3 Below Market (green)
+  // ─────────────────────────────────────────────────────────────────────────
+  private seedFTLBenchmarkData(): void {
+    if (Array.from(this.auctions.values()).some(a => a.name === 'FTL Market Benchmarking 2025')) return;
+
+    const now = Date.now();
+    const DAY = 24 * 60 * 60 * 1000;
+
+    // ── Auction record ───────────────────────────────────────────────────
+    const auctionId = 'AUC-FTL-BENCH-001';
+    this.auctions.set(auctionId, {
+      id: auctionId,
+      name: 'FTL Market Benchmarking 2025',
+      auctionType: AuctionType.REVERSE,
+      status: AuctionStatus.COMPLETED,
+      createdBy: 'SYSTEM',
+      clientId: 'CLIENT-001',
+      rulesetId: 'RS-DEFAULT',
+      createdAt: now - 90 * DAY,
+    } as Auction);
+
+    // ── Lane definitions ─────────────────────────────────────────────────
+    // Format: "Origin -> Destination | Body Size"
+    // Bids spread weekly over 12 weeks (oldest → newest, highest → lowest)
+    // Contract rates are stored in amsContractStore.ts and compared to P50.
+    const laneSpecs: Array<{
+      id: string;
+      laneName: string;
+      bids: number[];   // ordered from highest to lowest (market high → low)
+      winnerVendorIdx: number;
+    }> = [
+      {
+        // Mumbai → Delhi | 32 Ft MXL — ABOVE MARKET: contract ₹67,000 vs P50 ₹57,000 (+17.5%)
+        id: 'FTL-LANE-01',
+        laneName: 'Mumbai -> Delhi | 32 Ft MXL',
+        bids: [75000, 70000, 66000, 63000, 60000, 58000, 56000, 54000, 52000, 50000, 48000, 46000],
+        winnerVendorIdx: 11,
+      },
+      {
+        // Delhi → Mumbai | 32 Ft MXL — AT MARKET: contract ₹50,000 vs P50 ₹54,000 (-7.4%)
+        id: 'FTL-LANE-02',
+        laneName: 'Delhi -> Mumbai | 32 Ft MXL',
+        bids: [70000, 66000, 62000, 58000, 56000, 54000, 52000, 50000, 48000, 46000, 44000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Mumbai → Bangalore | 32 Ft SXL — BELOW MARKET: contract ₹32,000 vs P50 ₹38,000 (-15.8%)
+        id: 'FTL-LANE-03',
+        laneName: 'Mumbai -> Bangalore | 32 Ft SXL',
+        bids: [52000, 48000, 44000, 42000, 40000, 38000, 36000, 34000, 32000, 30000, 28000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Delhi → Kolkata | 32 Ft MXL — AT MARKET: contract ₹58,000 vs P50 ₹56,000 (+3.6%)
+        id: 'FTL-LANE-04',
+        laneName: 'Delhi -> Kolkata | 32 Ft MXL',
+        bids: [74000, 70000, 66000, 62000, 58000, 56000, 54000, 52000, 50000, 48000, 46000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Chennai → Hyderabad | 40 Ft — BELOW MARKET: contract ₹24,000 vs P50 ₹27,000 (-11.1%)
+        id: 'FTL-LANE-05',
+        laneName: 'Chennai -> Hyderabad | 40 Ft',
+        bids: [42000, 38000, 35000, 32000, 30000, 28000, 27000, 26000, 25000, 24000, 22000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Mumbai → Hyderabad | 32 Ft SXL — ABOVE MARKET: contract ₹40,000 vs P50 ₹29,500 (+35.6%)
+        id: 'FTL-LANE-06',
+        laneName: 'Mumbai -> Hyderabad | 32 Ft SXL',
+        bids: [42000, 39000, 36000, 34000, 32000, 30000, 29000, 28000, 27000, 26000, 24000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Ahmedabad → Mumbai | 24 Ft — BELOW MARKET: contract ₹14,000 vs P50 ₹16,000 (-12.5%)
+        id: 'FTL-LANE-07',
+        laneName: 'Ahmedabad -> Mumbai | 24 Ft',
+        bids: [22000, 21000, 20000, 19000, 18000, 17000, 16000, 15000, 14000, 13000, 12000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Delhi → Jaipur | 20 Ft — AT MARKET: contract ₹7,800 vs P50 ₹7,500 (+4%)
+        id: 'FTL-LANE-08',
+        laneName: 'Delhi -> Jaipur | 20 Ft',
+        bids: [10000, 9500, 9000, 8500, 8000, 7800, 7500, 7000, 6500, 6000, 5500],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Kolkata → Guwahati | 32 Ft MXL — ABOVE MARKET: contract ₹50,000 vs P50 ₹38,000 (+31.6%)
+        id: 'FTL-LANE-09',
+        laneName: 'Kolkata -> Guwahati | 32 Ft MXL',
+        bids: [48000, 46000, 44000, 42000, 40000, 38000, 36000, 34000, 32000, 30000, 28000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Chennai → Bangalore | 40 Ft — ABOVE MARKET: contract ₹28,000 vs P50 ₹20,500 (+36.6%)
+        id: 'FTL-LANE-10',
+        laneName: 'Chennai -> Bangalore | 40 Ft',
+        bids: [28000, 25000, 24000, 23000, 22000, 21000, 20000, 19000, 18000, 17000, 16000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Mumbai → Pune | 20 Ft — AT MARKET: contract ₹6,500 vs P50 ₹7,000 (-7.1%)
+        id: 'FTL-LANE-11',
+        laneName: 'Mumbai -> Pune | 20 Ft',
+        bids: [10000, 9500, 9000, 8500, 8000, 7500, 7000, 6500, 6000, 5500, 5000],
+        winnerVendorIdx: 10,
+      },
+      {
+        // Delhi → Lucknow | 24 Ft — ABOVE MARKET: contract ₹18,500 vs P50 ₹15,750 (+17.5%)
+        id: 'FTL-LANE-12',
+        laneName: 'Delhi -> Lucknow | 24 Ft',
+        bids: [20000, 19000, 18000, 17500, 17000, 16500, 16000, 15500, 15000, 14000, 13000, 12000],
+        winnerVendorIdx: 11,
+      },
+    ];
+
+    const vendors = this.demoVendorPool;
+
+    laneSpecs.forEach((spec, laneIdx) => {
+      // ── Lane record ────────────────────────────────────────────────────
+      const lowestBid = spec.bids[spec.bids.length - 1];
+      const highestBid = spec.bids[0];
+      this.lanes.set(spec.id, {
+        id: spec.id,
+        auctionId,
+        laneName: spec.laneName,
+        sequenceOrder: laneIdx + 1,
+        status: LaneStatus.AWARDED,
+        basePrice: highestBid,
+        currentLowestBid: lowestBid,
+        minBidDecrement: 500,
+        timerDurationSeconds: 300,
+        tatDays: 2 + (laneIdx % 3),
+      } as AuctionLane);
+
+      // ── Bids — spread weekly over 12 weeks ────────────────────────────
+      // Oldest bid = highest price (market was higher weeks ago)
+      // Newest bid = lowest price (market has come down recently → Falling trend)
+      const bidRecords: Bid[] = spec.bids.map((amount, i) => ({
+        id: `B-${spec.id}-${String(i + 1).padStart(2, '0')}`,
+        auctionLaneId: spec.id,
+        vendorId: vendors[(laneIdx + i) % vendors.length],
+        bidAmount: amount,
+        bidTimestamp: now - (spec.bids.length - 1 - i) * 7 * DAY,
+        isValid: true,
+      }));
+      this.bids.set(spec.id, bidRecords);
+
+      // ── Award — lowest bid wins ────────────────────────────────────────
+      const winnerVendor = vendors[(laneIdx + spec.winnerVendorIdx) % vendors.length];
+      this.awards.set(spec.id, {
+        id: `AWD-${spec.id}`,
+        auctionLaneId: spec.id,
+        vendorId: winnerVendor,
+        price: lowestBid,
+        rank: 1,
+        reason: 'L1 award — lowest competitive bid',
+        awardedAt: now - 7 * DAY,
+        awardedBy: 'SYSTEM',
+        status: AwardAcceptanceStatus.ACCEPTED,
+        acceptanceDeadline: now + 7 * DAY,
+        acceptedAt: now - 6 * DAY,
+        notificationLog: [],
+      } as Award);
+    });
+  }
+
   private seedLiveAuctionDemo(): void {
     if (this.auctions.size > 0) return;
 
@@ -2748,6 +2923,7 @@ class AuctionEngine {
 
   private seedData() {
     this.initializeSystemTemplates();
+    this.seedFTLBenchmarkData();
     this.seedLiveAuctionDemo();
     this.seedDisputesDemo();
   }
