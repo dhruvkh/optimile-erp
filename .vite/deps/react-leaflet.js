@@ -1,12 +1,12 @@
 import {
+  require_leaflet_src
+} from "./chunk-XPUPTK5G.js";
+import {
   require_react_dom
 } from "./chunk-D3PCNMJN.js";
 import {
   require_react
 } from "./chunk-SKCSXP5W.js";
-import {
-  require_leaflet_src
-} from "./chunk-XPUPTK5G.js";
 import {
   __toESM
 } from "./chunk-DC5AMYBS.js";
